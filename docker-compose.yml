@@ -1,0 +1,161 @@
+# Launch Nextcloud suite (nextcloud/nginx/fpm with SSL and automated Letsencrypt certs and MySQL Backups)
+# Adapted from https://github.com/nextcloud/docker
+# A Morris 23-Aug-2018 Initial Version
+# A Morris 24-Aug-2018 Added MySQL Dumps
+# A Morris 27-Aug-2018 Added Log rotation
+
+version: '3.4'
+
+services:
+  db:
+    image: mariadb
+    container_name: nextcloud-db
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    restart: unless-stopped
+    volumes:
+      - ./volume/db:/var/lib/mysql
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100K"
+        max-file: "5"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  redis:
+    image: redis
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50k"
+        max-file: "3"
+
+  app:
+    build: ./build/app
+    container_name: nextcloud-app
+    restart: unless-stopped
+    volumes:
+      - ./volume/app:/var/www/html
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "10"
+    environment:
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      NEXTCLOUD_DATA_DIR: ${NEXTCLOUD_DATA_DIR}
+      NEXTCLOUD_TABLE_PREFIX: ${NEXTCLOUD_TABLE_PREFIX}
+      MYSQL_HOST: db
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      - db
+      - redis
+
+  cron:
+    build: ./build/app
+    container_name: nextcloud-cron
+    restart: unless-stopped
+    volumes:
+      - ./volume/app:/var/www/html
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10k"
+        max-file: "3"
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
+
+  web:
+    build: ./build/web
+    container_name: nextcloud-nginx
+    restart: unless-stopped
+    volumes:
+      - ./volume/app:/var/www/html:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
+    environment:
+      VIRTUAL_HOST: $VIRTUAL_HOST
+      LETSENCRYPT_HOST: $LETSENCRYPT_HOST
+      LETSENCRYPT_EMAIL: $LETSENCRYPT_EMAIL
+    depends_on:
+      - app
+    networks:
+      - proxy-tier
+      - default
+
+  proxy:
+    build: ./build/proxy
+    container_name: nextcloud-SSLproxy
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "3"
+    volumes:
+      - ./volume/proxy/certs:/etc/nginx/certs:ro
+      - ./volume/proxy/vhost.d:/etc/nginx/vhost.d
+      - ./volume/proxy/html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - proxy-tier
+
+  letsencrypt-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: nextcloud-letsencrypt
+    restart: unless-stopped
+    volumes:
+      - ./volume/proxy/certs:/etc/nginx/certs
+      - ./volume/proxy/vhost.d:/etc/nginx/vhost.d
+      - ./volume/proxy/html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50k"
+        max-file: "3"
+    networks:
+      - proxy-tier
+    depends_on:
+      - proxy
+
+  backup:
+    image: fradelg/mysql-cron-backup
+    restart: unless-stopped
+    volumes:
+      - ./volume/backup:/backup
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50k"
+        max-file: "3"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_USER: root
+      MYSQL_PASS: $MYSQL_ROOT_PASSWORD
+      CRON_TIME: $CRON_TIME
+      MAX_BACKUPS: $MAX_BACKUPS
+      INIT_BACKUP: $INIT_BACKUP
+    depends_on:
+      - db
+
+networks:
+  proxy-tier:
