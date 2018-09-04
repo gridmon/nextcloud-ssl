@@ -8,16 +8,14 @@ eg
     ufw allow 443/tcp
     ufw enable
 
-### Install Docker and docker-compose
-
-Install Docker (see https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+### Install Docker
+See https://docs.docker.com/install/linux/docker-ce/ubuntu/
 
 ### Install docker-compose
-
-Install Docker Compose (see https://docs.docker.com/compose/install/)
+See https://docs.docker.com/compose/install/
 
 ### Install Git
-see https://git-scm.com/docs
+See https://git-scm.com/docs
 On ubuntu
 
     apt install git
