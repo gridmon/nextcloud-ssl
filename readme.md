@@ -1,6 +1,6 @@
 ## Pre-requisites
 ### Configure firewall (if necessary)
-UFW (Ubuntu) example
+Ubuntu UFW example
 
     ufw default deny incoming
     ufw default allow outgoing
