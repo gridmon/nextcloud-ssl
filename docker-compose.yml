@@ -3,10 +3,12 @@
 # A Morris 23-Aug-2018 Initial Version
 # A Morris 24-Aug-2018 Added MySQL Dumps
 # A Morris 27-Aug-2018 Added Log rotation
+# A Morris 19-Oct-2018 Added description for each container
 
 version: '3.4'
 
 services:
+  # database
   db:
     image: mariadb
     container_name: nextcloud-db
@@ -25,6 +27,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
+  # cache
   redis:
     image: redis
     container_name: nextcloud-redis
@@ -35,6 +38,7 @@ services:
         max-size: "50k"
         max-file: "3"
 
+  # nextcloud app (php)
   app:
     build: ./build/app
     container_name: nextcloud-app
@@ -59,6 +63,7 @@ services:
       - db
       - redis
 
+  # scheduler (for backups etc)
   cron:
     build: ./build/app
     container_name: nextcloud-cron
@@ -75,6 +80,7 @@ services:
       - db
       - redis
 
+  # webserver for app (internal side)
   web:
     build: ./build/web
     container_name: nextcloud-nginx
@@ -96,6 +102,7 @@ services:
       - proxy-tier
       - default
 
+  # SSL webserver (external facing)
   proxy:
     build: ./build/proxy
     container_name: nextcloud-SSLproxy
@@ -118,6 +125,7 @@ services:
     networks:
       - proxy-tier
 
+  # Procure and maintain TLS certs
   letsencrypt-companion:
     image: jrcs/letsencrypt-nginx-proxy-companion
     container_name: nextcloud-letsencrypt
@@ -137,6 +145,7 @@ services:
     depends_on:
       - proxy
 
+  # Run DB backups
   backup:
     image: fradelg/mysql-cron-backup
     restart: unless-stopped
