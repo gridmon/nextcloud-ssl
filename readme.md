@@ -1,6 +1,7 @@
 ## Pre-requisites
-### Configure firewall?
-eg
+### Configure firewall (if necessary)
+UFW (Ubuntu) example
+
     ufw default deny incoming
     ufw default allow outgoing
     ufw allow ssh
@@ -16,7 +17,8 @@ See https://docs.docker.com/compose/install/
 
 ### Install Git
 See https://git-scm.com/docs
-On ubuntu
+
+ubuntu example
 
     apt install git
 
@@ -29,7 +31,7 @@ On ubuntu
 Alternatively, if you dont want to use git (handy for getting updates though) - browse to github and download a zipped copy of the project.
 
 ### Configure nextcloud env vars
-Change all the your* values to suit your site ie MYSQL_DATABASE, LETSENCRYPT_EMAIL
+Change all the `your*` values to suit your site ie MYSQL_DATABASE, LETSENCRYPT_EMAIL
 
     cd nextcloud
     vi .env
